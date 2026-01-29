@@ -223,21 +223,95 @@
             display: block;
         }
 
-        /* Custom Scrollbar for Horizontal Lists */
+        /* --- Advanced Scrolling & Scrollbar System --- */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Container Scroll Area dengan Batasan Tinggi */
+        .content-scroll-area {
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            /* Momentum scroll iOS */
+
+            /* Responsive Max Height calculations */
+            max-height: calc(100vh - 400px);
+            /* Mobile Default */
+
+            /* Visuals */
+            padding-right: 4px;
+            /* Space for scrollbar */
+            scrollbar-color: var(--primary) rgba(255, 255, 255, 0.05);
+            scrollbar-width: thin;
+        }
+
+        /* Desktop Scrollbar Styling */
+        @media (min-width: 1024px) {
+            .content-scroll-area {
+                max-height: calc(100vh - 420px);
+            }
+
+            /* Custom Scrollbar PC */
+            ::-webkit-scrollbar {
+                width: 10px;
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: linear-gradient(to bottom, var(--primary), var(--secondary));
+                border-radius: 5px;
+                border: 2px solid rgba(0, 0, 0, 0.2);
+                /* Creates padding effect */
+            }
+
+            ::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.02);
+                border-radius: 5px;
+            }
+        }
+
+        /* Tablet Scrollbar Styling */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .content-scroll-area {
+                max-height: calc(100vh - 380px);
+            }
+        }
+
+        /* Mobile Scrollbar Styling */
+        @media (max-width: 767px) {
+
+            /* Scrollbar tipis/tersembunyi di mobile */
+            ::-webkit-scrollbar {
+                width: 6px;
+                background: transparent;
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 3px;
+            }
+
+            /* Hide scrollbar when not interacting if supported */
+            .content-scroll-area {
+                scrollbar-width: none;
+                /* Firefox mobile */
+            }
+        }
+
+        /* Horizontal Scroll Utility (Updated) */
         .horizontal-scroll {
             display: flex;
             gap: 12px;
             overflow-x: auto;
             padding-bottom: 8px;
             -webkit-overflow-scrolling: touch;
-            /* Smooth scrolling iOS */
             scrollbar-width: none;
-            /* Hide scrollbar Firefox */
+            /* Hide for cleanliness */
         }
 
         .horizontal-scroll::-webkit-scrollbar {
             display: none;
-            /* Hide scrollbar Chrome/Safari */
         }
 
         @media (min-width: 768px) {
@@ -774,6 +848,9 @@
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
                 gap: 24px;
+                max-width: 1200px;
+                /* Layout Limit */
+                margin: 0 auto;
             }
 
             .favorites-grid {
@@ -2680,6 +2757,9 @@
                 <Background3D color1="var(--primary)" color2="var(--secondary)">
                     <div className="animate">
                         <header className="page-header" style={{
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 100,
                             background: `linear-gradient(135deg, ${searchSource === 'internal' ? 'var(--primary)' : activeSource.color + 'aa'}, var(--secondary))`,
                             transition: 'background 0.5s ease',
                             boxShadow: `0 15px 30px ${searchSource === 'internal' ? 'rgba(0,0,0,0.2)' : activeSource.color + '22'}`,
@@ -3022,23 +3102,25 @@
                             </div>
                         </div>
 
-                        <div style={{ paddingBottom: 60 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '0 16px' }}>
+                        <div style={{ paddingBottom: 20 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '0 16px' }}>
                                 <div>
                                     <h3 style={{ fontSize: 'clamp(15px, 4vw, 18px)', fontWeight: '800' }}>Deep-AI Analysis Base</h3>
                                     <p style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 4 }}>Validasi otomatis tiap 24 jam</p>
                                 </div>
                                 <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>Eksplorasi</div>
                             </div>
-                            <KnowledgeFeed
-                                searchTerm={searchTerm}
-                                knowledgeBase={knowledgeBase}
-                                onKnowledgeClick={(k) => {
-                                    setSelectedKnowledge(k);
-                                    setIsAnalyzing(true);
-                                    setTimeout(() => setIsAnalyzing(false), 2000);
-                                }}
-                            />
+                            <div className="content-scroll-area">
+                                <KnowledgeFeed
+                                    searchTerm={searchTerm}
+                                    knowledgeBase={knowledgeBase}
+                                    onKnowledgeClick={(k) => {
+                                        setSelectedKnowledge(k);
+                                        setIsAnalyzing(true);
+                                        setTimeout(() => setIsAnalyzing(false), 2000);
+                                    }}
+                                />
+                            </div>
                         </div>
 
                         {/* AI Analysis Modal Overlay */}
