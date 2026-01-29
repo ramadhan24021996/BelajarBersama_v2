@@ -1741,7 +1741,7 @@
             );
         };
 
-        const Pesan = ({ userName }) => {
+        const Pesan = ({ userName, onNavigate }) => {
             const [filter, setFilter] = useState('inbox');
             const chats = [
                 { name: 'Natasya Rina', msg: 'Bisa kita diskusi lebih lanjut?', time: '2m', unread: true, image: 'https://i.pravatar.cc/150?u=12' },
@@ -1764,7 +1764,12 @@
                             </div>
                         </div>
                         <div className="app-content">
-                            <header className="mobile-header"><h1>Riwayat Diskusi</h1></header>
+                            <header className="mobile-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div onClick={() => onNavigate && onNavigate('home')} style={{ cursor: 'pointer', padding: 8, background: 'rgba(99, 102, 241, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name="chevron-left" size={20} color="var(--primary)" />
+                                </div>
+                                <h1>Riwayat Diskusi</h1>
+                            </header>
 
                             <div className="search-bar" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', marginBottom: 24 }}>
                                 <Icon name="search" color="var(--text-gray)" />
@@ -1797,7 +1802,7 @@
             );
         };
 
-        const Notifikasi = () => {
+        const Notifikasi = ({ onNavigate }) => {
             const [filter, setFilter] = useState('all');
             const notifications = [
                 { id: 1, title: 'Diskusi Baru', desc: 'Siti Aminah mengomentari diskusi tentang "Driver Printer HP"', time: '2m lalu', type: 'message' },
@@ -1822,7 +1827,10 @@
                             </div>
                         </div>
                         <div className="app-content">
-                            <header className="mobile-header">
+                            <header className="mobile-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div onClick={() => onNavigate && onNavigate('home')} style={{ cursor: 'pointer', padding: 8, background: 'rgba(99, 102, 241, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name="chevron-left" size={20} color="var(--primary)" />
+                                </div>
                                 <h1>Notifikasi</h1>
                             </header>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1864,7 +1872,10 @@
                         </div>
 
                         <div className="app-content">
-                            <header className="mobile-header">
+                            <header className="mobile-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div onClick={() => onNavigate && onNavigate('home')} style={{ cursor: 'pointer', padding: 8, background: 'rgba(99, 102, 241, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name="chevron-left" size={20} color="var(--primary)" />
+                                </div>
                                 <h1>Bantuan</h1>
                             </header>
                             {tab === 'umum' && (
@@ -2094,7 +2105,7 @@
             );
         };
 
-        const Profil = ({ userName, userRole, isPrivate, onTogglePrivate, onLogout }) => {
+        const Profil = ({ userName, userRole, isPrivate, onTogglePrivate, onLogout, onNavigate }) => {
             const [tab, setTab] = useState('ringkasan');
 
             return (
@@ -2123,7 +2134,10 @@
 
                         {/* Content Area */}
                         <div className="app-content">
-                            <header className="mobile-header">
+                            <header className="mobile-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div onClick={() => onNavigate && onNavigate('home')} style={{ cursor: 'pointer', padding: 8, background: 'rgba(99, 102, 241, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name="chevron-left" size={20} color="var(--primary)" />
+                                </div>
                                 <h1 style={{ fontSize: 24 }}>Profil Saya</h1>
                             </header>
 
@@ -3716,9 +3730,9 @@
                         </div>
 
                         {/* Persistent Tabs (Instant Access) */}
-                        <div style={{ display: tab === 'pesan' ? 'block' : 'none' }}><Pesan userName={userName} /></div>
+                        <div style={{ display: tab === 'pesan' ? 'block' : 'none' }}><Pesan userName={userName} onNavigate={(target) => setTab(target)} /></div>
                         <div style={{ display: tab === 'anggota' ? 'block' : 'none' }}><Anggota isPrivateMode={isPrivate} /></div>
-                        <div style={{ display: tab === 'notif' ? 'block' : 'none' }}><Notifikasi /></div>
+                        <div style={{ display: tab === 'notif' ? 'block' : 'none' }}><Notifikasi onNavigate={(target) => setTab(target)} /></div>
                         <div style={{ display: tab === 'profil' ? 'block' : 'none' }}>
                             <Profil
                                 userName={userName}
@@ -3726,6 +3740,7 @@
                                 isPrivate={isPrivate}
                                 onTogglePrivate={() => setIsPrivate(!isPrivate)}
                                 onLogout={handleLogout}
+                                onNavigate={(target) => setTab(target)}
                             />
                         </div>
                         <div style={{ display: tab === 'bantuan' ? 'block' : 'none' }}><Bantuan onNavigate={(target) => setTab(target)} /></div>
