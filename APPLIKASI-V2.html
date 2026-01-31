@@ -1785,7 +1785,25 @@
                                                 />
                                                 Ingat Saya
                                             </label>
-                                            <span onClick={() => setAuthMode('forgot_password')} style={{ color: '#6366f1', fontSize: 12, cursor: 'pointer', zIndex: 50 }}>Lupa Password?</span>
+                                            <span
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log('Switching to forgot_password'); // Debug log
+                                                    setAuthMode('forgot_password');
+                                                }}
+                                                style={{
+                                                    color: '#6366f1',
+                                                    fontSize: 12,
+                                                    cursor: 'pointer',
+                                                    position: 'relative',
+                                                    zIndex: 100,
+                                                    fontWeight: 600,
+                                                    padding: '4px 0 4px 10px'
+                                                }}
+                                            >
+                                                Lupa Password?
+                                            </span>
                                         </div>
                                     )}
 
