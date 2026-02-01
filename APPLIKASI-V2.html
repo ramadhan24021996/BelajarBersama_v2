@@ -24,8 +24,6 @@
         window.onerror = function (msg, url, line, col, error) {
             // Ignore benign ResizeObserver error
             if (msg.includes('ResizeObserver')) return false;
-            // Ignore React DOM RemoveChild errors (common with extensions like Passbolt)
-            if (msg.includes('removeChild') || msg.includes('NotFoundError')) return true;
 
             const errorContainer = document.getElementById('error-container');
             if (errorContainer) {
@@ -979,8 +977,7 @@
     </div>
     <div id="root">
         <div style="color: #666; font-family: sans-serif; text-align: center; padding-top: 50px;">
-            <h2>Memuat Aplikasi v2.5 (Live Update)...</h2>
-            <p>Mohon tunggu sebentar, sedang sinkronisasi data...</p>
+            <h2>Memuat Aplikasi...</h2>
             <p>Jika halaman ini tidak berubah dalam 10 detik, cek koneksi internet Anda.</p>
         </div>
     </div>
@@ -1021,11 +1018,19 @@
             }
         };
 
-        const QuestionCard = ({ user, title, tags, comments = 0, onReply, onAddColleague }) => {
+        // Global Constants
+        const REGISTERED_MEMBERS = [
+            { id: 'u1', name: 'Rama (Admin)', role: 'Administrator IT', image: 'https://ui-avatars.com/api/?name=Rama&background=000&color=fff' },
+            { id: 'u2', name: 'Siti Aminah', role: 'Hardware Specialist', image: 'https://ui-avatars.com/api/?name=Siti+Aminah&background=random&color=fff' },
+            { id: 'u3', name: 'Budi Santoso', role: 'Network Engineer', image: 'https://ui-avatars.com/api/?name=Budi+Santoso&background=random&color=fff' },
+            { id: 'u4', name: 'Rudi Hermawan', role: 'Security Analyst', image: 'https://ui-avatars.com/api/?name=Rudi+Hermawan&background=random&color=fff' }
+        ];
+
+        const QuestionCard = ({ user, title, tags, comments = 0, participants = [], onReply, onAddColleague }) => {
             return (
                 <div className="card animate">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(45deg, #6366f1, #ec4899)' }}></div>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(45deg, #6366f1, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>{user[0]}</div>
                         <div>
                             <div style={{ fontSize: '14px', fontWeight: '600' }}>{user}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-gray)' }}>Baru saja</div>
@@ -1035,6 +1040,28 @@
                     <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
                         {tags.map(t => <span key={t} className="tag" style={{ textTransform: 'uppercase', fontSize: '10px' }}>{t}</span>)}
                     </div>
+
+                    {participants.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <div style={{ display: 'flex', marginLeft: 4 }}>
+                                {participants.slice(0, 3).map((p, i) => (
+                                    <img
+                                        key={i}
+                                        src={p.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff`}
+                                        style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--bg-card)', marginLeft: i === 0 ? 0 : -8 }}
+                                        title={p.name}
+                                    />
+                                ))}
+                                {participants.length > 3 && (
+                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid var(--bg-card)', marginLeft: -8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'white' }}>
+                                        +{participants.length - 3}
+                                    </div>
+                                )}
+                            </div>
+                            <span style={{ fontSize: 10, color: 'var(--text-gray)' }}>{participants.length} Rekan Bergabung</span>
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         <div onClick={onReply} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>
                             <Icon name="message-circle" size={16} />
@@ -1042,7 +1069,7 @@
                         </div>
                         <div onClick={onAddColleague} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-gray)', fontSize: '12px', cursor: 'pointer' }}>
                             <Icon name="user-plus" size={16} />
-                            <span>Ikut Serta</span>
+                            <span style={{ color: participants.some(p => p.name === user) ? 'var(--primary)' : 'inherit' }}>Ikut Serta</span>
                         </div>
                         <div onClick={(e) => { e.stopPropagation(); globalShare({ title: 'Diskusi IT', text: `Yuk bantu jawab diskusi ini: "${title}"` }); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-gray)', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto' }}>
                             <Icon name="share-2" size={16} />
@@ -2358,9 +2385,6 @@
             const [uploading, setUploading] = useState(false);
             const fileInputRef = useRef(null);
 
-            // Dictionary Bahasa moved down
-
-
             const handleFileChange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -2422,32 +2446,6 @@
                     return saved ? JSON.parse(saved) : ['Hardware', 'Networking', 'Software Install', 'Windows OS'];
                 } catch (e) { return ['Hardware', 'Networking', 'Software Install', 'Windows OS']; }
             });
-            const [newSkill, setNewSkill] = useState('');
-
-            // Helper for animated numbers
-            const AnimatedCounter = ({ end, duration = 1000, label, icon, color }) => {
-                const [count, setCount] = useState(0);
-                useEffect(() => {
-                    let start = 0;
-                    const stepTime = Math.abs(Math.floor(duration / end));
-                    const timer = setInterval(() => {
-                        start += 1;
-                        setCount(start);
-                        if (start >= end) clearInterval(timer);
-                    }, stepTime);
-                    return () => clearInterval(timer);
-                }, [end, duration]);
-
-                return (
-                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <div style={{ padding: 10, background: `${color}15`, borderRadius: '50%', color: color }}>
-                            <Icon name={icon} size={20} />
-                        </div>
-                        <div style={{ fontSize: 24, fontWeight: 800 }}>{count}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-gray)' }}>{label}</div>
-                    </div >
-                );
-            };
 
             // Stats Simulation
             const [stats] = useState({
@@ -2479,16 +2477,14 @@
                 }
             }, [skills, userName]);
 
-            const handleAddSkill = (e) => {
-                if (e.key === 'Enter' && newSkill.trim()) {
-                    const skillToAdd = newSkill.trim();
-                    // Case-insensitive duplicate check
-                    if (skills.some(s => s.toLowerCase() === skillToAdd.toLowerCase())) {
-                        alert('Keahlian sudah ada dalam daftar!');
+            const handleAddSkill = () => {
+                const newSkill = prompt("Tambah Keahlian Baru (mis: ReactJS, Python):");
+                if (newSkill && newSkill.trim()) {
+                    if (skills.includes(newSkill.trim())) {
+                        alert('Keahlian sudah ada!');
                         return;
                     }
-                    setSkills([...skills, skillToAdd]);
-                    setNewSkill('');
+                    setSkills([...skills, newSkill.trim()]);
                 }
             };
 
@@ -2609,63 +2605,38 @@
                                         </div>
                                     </div>
 
-                                    {/* Optimized v2.5 Stats & Skills */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 24 }}>
-
-                                        {/* Stats Column */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                                                <AnimatedCounter end={stats.diskusi || 128} label={t.stat_discuss} icon="message-circle" color="#6366f1" />
-                                                <AnimatedCounter end={stats.solusi || 45} label={t.stat_solution} icon="check-circle" color="#10B981" />
-                                                <AnimatedCounter end={stats.poin || 850} label={t.stat_points} icon="award" color="#F59E0B" />
-                                            </div>
+                                    <div className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', textAlign: 'center', padding: '24px 0', marginTop: 24 }}>
+                                        <div className="hover-scale" style={{ cursor: 'pointer' }} onClick={() => alert('Detail statistik diskusi Anda')}>
+                                            <div style={{ fontSize: 20, fontWeight: 800 }}>{stats.diskusi}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-gray)', textTransform: 'uppercase', marginTop: 4 }}>Diskusi</div>
                                         </div>
+                                        <div className="hover-scale" style={{ borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => alert('Detail tingkat solusi Anda')}>
+                                            <div style={{ fontSize: 20, fontWeight: 800 }}>{stats.solusi}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-gray)', textTransform: 'uppercase', marginTop: 4 }}>Solusi</div>
+                                        </div>
+                                        <div className="hover-scale" style={{ cursor: 'pointer' }} onClick={() => alert('Riwayat poin Anda')}>
+                                            <div style={{ fontSize: 20, fontWeight: 800 }}>{stats.poin}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-gray)', textTransform: 'uppercase', marginTop: 4 }}>Poin</div>
+                                        </div>
+                                    </div>
 
-                                        {/* Skills Column with Glass Effect */}
-                                        <div className="card" style={{ margin: 0, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1 }}>{t.skills_title}</div>
-                                                {isEditing && (
-                                                    <div style={{ fontSize: 11, color: 'var(--primary)', cursor: 'pointer' }} onClick={() => document.getElementById('skillInput')?.focus()}>
-                                                        + Add
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, flex: 1, alignContent: 'flex-start' }}>
-                                                {skills.map(skill => (
-                                                    <div key={skill} className="animate" style={{
-                                                        padding: '6px 12px',
-                                                        background: 'rgba(255,255,255,0.05)',
-                                                        borderRadius: 20,
-                                                        border: '1px solid rgba(255,255,255,0.1)',
-                                                        fontSize: 12,
-                                                        display: 'flex', alignItems: 'center', gap: 8,
-                                                        transition: 'all 0.2s'
-                                                    }}>
-                                                        {skill}
-                                                        {isEditing && (
-                                                            <div onClick={() => removeSkill(skill)} style={{ cursor: 'pointer', display: 'flex', color: '#EF4444' }}>
-                                                                <Icon name="x" size={12} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                {isEditing && (
-                                                    <input
-                                                        id="skillInput"
-                                                        value={newSkill}
-                                                        onChange={e => setNewSkill(e.target.value)}
-                                                        onKeyDown={handleAddSkill}
-                                                        placeholder="Ketik & Enter..."
-                                                        style={{
-                                                            background: 'transparent', border: '1px dashed var(--text-gray)',
-                                                            borderRadius: 20, padding: '6px 12px', color: 'white',
-                                                            fontSize: 12, outline: 'none', minWidth: 100, flex: 1
-                                                        }}
-                                                    />
-                                                )}
-                                            </div>
+                                    <div className="card" style={{ marginTop: 24 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                            <h3 style={{ fontSize: 16 }}>Keahlian IT</h3>
+                                            <button onClick={handleAddSkill} style={{ background: 'var(--primary)', border: 'none', borderRadius: 8, width: 28, height: 28, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Icon name="plus" size={16} />
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                            {skills.map(t => (
+                                                <div key={t} className="tag" style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 6 }}>
+                                                    {t}
+                                                    <span onClick={() => handleRemoveSkill(t)} style={{ cursor: 'pointer', opacity: 0.6, display: 'flex', alignItems: 'center' }}>
+                                                        <Icon name="x" size={12} />
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            {skills.length === 0 && <span style={{ color: 'var(--text-gray)', fontSize: 13 }}>Belum ada keahlian ditambahkan.</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -2814,18 +2785,26 @@
         };
 
         // --- Bidang Detail Screen (The "New Bar" View) ---
-        const BidangDetail = ({ bidang, onBack, currentUserName, onAddKnowledge, categoryData, onUpdateCategoryData, addNotification }) => {
+        const BidangDetail = ({ bidang, onBack, currentUserName, onAddKnowledge, categoryData, onUpdateCategoryData, addNotification, registeredMembers = [] }) => {
             const [activeTab, setActiveTab] = useState('diskusi');
             const [msg, setMsg] = useState('');
             const [showMemberSelector, setShowMemberSelector] = useState(false);
-            // Chat File Upload State
+            const [memberSearchTerm, setMemberSearchTerm] = useState('');
+            const [selectedDiscussionIdx, setSelectedDiscussionIdx] = useState(null);
+            const [expertPostText, setExpertPostText] = useState('');
+            const [visibleComments, setVisibleComments] = useState({});
+            const [commentInputs, setCommentInputs] = useState({});
             const [selectedFile, setSelectedFile] = useState(null);
             const chatFileRef = useRef(null);
             const inputRef = useRef(null);
 
-            const { discussions, chatMessages } = categoryData;
+            const { discussions = [] } = categoryData;
 
-            // Helper to download file
+            const handleReplyTo = (user) => {
+                setMsg(`@${user} `);
+                setTimeout(() => inputRef.current?.focus(), 100);
+            };
+
             const downloadFile = (fileData, fileName) => {
                 const link = document.createElement('a');
                 link.href = fileData;
@@ -2845,29 +2824,15 @@
                     const newMsg = {
                         user: currentUserName || 'Anda',
                         text: msg,
-                        time: 'Baru saja',
+                        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
                         self: true,
                         attachment: fileAttachment
                     };
 
-                    // Update chatMessages (Public Chat)
                     const updatedChat = [...(categoryData.chatMessages || []), newMsg];
-
-                    // Update Discussions if it's a new topic thread (Text only logic kept for backward compatibility if needed, but here we focus on Chat)
-                    // If activeTab is 'diskusi', we might want to just append to chatMessages which is the "Public Chat" at the bottom.
-                    // The original code was creating a "newDisq" (Discussion Thread) for messages not starting with @.
-                    // However, the requested feature is "File Upload in Conversation". 
-                    // Let's assume the bottom bar feed is the 'Conversation' (chatMessages).
-
-                    // We update BOTH for safety or just chatMessages depending on UX. 
-                    // Based on previous code, the bottom input WAS creating discussions threads if not @reply. 
-                    // BUT, the `chatMessages` array is rendered at the bottom as "Public Chat". 
-                    // Let's ensure we update `chatMessages` primarily for the file feature.
-
                     onUpdateCategoryData(bidang.name, {
                         ...categoryData,
                         chatMessages: updatedChat
-                        // Note: We are strictly updating chatMessages here for the file upload feature context.
                     });
 
                     setMsg('');
@@ -2892,34 +2857,67 @@
             const handleChatFileSelect = (e) => {
                 if (e.target.files[0]) setSelectedFile(e.target.files[0]);
             };
-            // Legacy logic for AI Eval (Removed to simplify for File Upload integration as per instruction)
-            /* 
-               Note: The original complex logic for onAddKnowledge/AI Evaluation was conflicting with the new file upload structure 
-               and causing syntax errors. We have prioritized the File Upload feature.
-               If AI evaluation for specific text triggers is needed, it should be re-added carefully inside the processSend function
-               or as a separate effect.
-            */
 
-            const handleReplyTo = (user) => {
-                setMsg(`@${user} `);
-                setTimeout(() => inputRef.current?.focus(), 100);
+            const handleToggleLikeMaterial = (matId) => {
+                const updatedMaterials = (categoryData.materials || []).map(m => {
+                    if (m.id === matId) {
+                        const newIsLiked = !m.isLiked;
+                        return {
+                            ...m,
+                            isLiked: newIsLiked,
+                            likes: newIsLiked ? (m.likes || 0) + 1 : Math.max(0, (m.likes || 1) - 1)
+                        };
+                    }
+                    return m;
+                });
+                onUpdateCategoryData(bidang.name, { ...categoryData, materials: updatedMaterials });
+            };
+
+            const handleAddCommentMaterial = (matId) => {
+                const comment = prompt('Tulis komentar Anda:');
+                if (comment) {
+                    const updatedMaterials = (categoryData.materials || []).map(m => {
+                        if (m.id === matId) {
+                            return { ...m, discussions: (m.discussions || 0) + 1 };
+                        }
+                        return m;
+                    });
+                    onUpdateCategoryData(bidang.name, { ...categoryData, materials: updatedMaterials });
+                    alert('Komentar Anda telah ditambahkan!');
+                }
             };
 
             const selectMember = (member) => {
-                alert(`Rekan "${member.name}" berhasil dihubungkan ke diskusi ini.`);
-                setShowMemberSelector(false);
-            };
+                if (selectedDiscussionIdx === null) {
+                    alert(`Rekan "${member.name}" berhasil dihubungkan ke bidang ini.`);
+                    setShowMemberSelector(false);
+                    return;
+                }
 
-            const ChatMessage = ({ user, text, time }) => (
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>{user[0]}</div>
-                    <div style={{ background: 'var(--bg-card)', padding: '10px 14px', borderRadius: '0 12px 12px 12px', border: '1px solid var(--border)', flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', marginBottom: 2 }}>{user}</div>
-                        <div style={{ fontSize: 13, color: 'white' }}>{text}</div>
-                        <div style={{ fontSize: 9, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right' }}>{time}</div>
-                    </div>
-                </div>
-            );
+                const updatedDiscussions = [...discussions];
+                const disc = { ...updatedDiscussions[selectedDiscussionIdx] };
+                if (!disc.participants) disc.participants = [];
+
+                if (disc.participants.some(p => p.id === member.id)) {
+                    alert(`${member.name} sudah bergabung dalam diskusi ini.`);
+                } else {
+                    disc.participants.push(member);
+                    updatedDiscussions[selectedDiscussionIdx] = disc;
+                    onUpdateCategoryData(bidang.name, { ...categoryData, discussions: updatedDiscussions });
+                    alert(`${member.name} berhasil ditambahkan ke diskusi: "${disc.title}"`);
+
+                    if (addNotification) {
+                        addNotification({
+                            title: 'Rekan Ditambahkan',
+                            desc: `${member.name} bergabung dalam diskusi Anda.`,
+                            type: 'info',
+                            target: 'home'
+                        });
+                    }
+                }
+                setShowMemberSelector(false);
+                setSelectedDiscussionIdx(null);
+            };
 
             return (
                 <Background3D color1={bidang.color || 'var(--primary)'} color2="var(--secondary)">
@@ -2932,24 +2930,42 @@
                                         <h3 style={{ fontSize: 18 }}>Pilih Rekan Kerja</h3>
                                         <div onClick={() => setShowMemberSelector(false)} style={{ cursor: 'pointer', padding: 8 }}><Icon name="x" /></div>
                                     </div>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                                            <Icon name="search" size={16} color="var(--text-gray)" />
+                                            <input
+                                                placeholder="Cari nama rekan..."
+                                                value={memberSearchTerm}
+                                                onChange={e => setMemberSearchTerm(e.target.value)}
+                                                style={{ background: 'transparent', border: 'none', color: 'white', flex: 1, outline: 'none', fontSize: 13 }}
+                                            />
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        {REGISTERED_MEMBERS.map(m => (
-                                            <div key={m.id} onClick={() => selectMember(m)} className="nav-item" style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer' }}>
-                                                <img src={m.image} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-gray)' }}>{m.role}</div>
+                                        {(registeredMembers.length > 0 ? registeredMembers : REGISTERED_MEMBERS)
+                                            .filter(m => m.name !== currentUserName)
+                                            .filter(m => m.name.toLowerCase().includes(memberSearchTerm.toLowerCase()))
+                                            .map(m => (
+                                                <div key={m.id || m.name} onClick={() => selectMember(m)} className="nav-item" style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer' }}>
+                                                    <img src={m.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=fff`} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-gray)' }}>{m.role || 'Member'}</div>
+                                                    </div>
+                                                    <Icon name="plus" size={16} color="var(--primary)" />
                                                 </div>
-                                                <Icon name="plus" size={16} color="var(--primary)" />
-                                            </div>
-                                        ))}
+                                            ))}
+                                        {(registeredMembers.length > 0 ? registeredMembers : REGISTERED_MEMBERS).filter(m => m.name !== currentUserName).filter(m => m.name.toLowerCase().includes(memberSearchTerm.toLowerCase())).length === 0 && (
+                                            <div style={{ textAlign: 'center', color: 'var(--text-gray)', fontSize: 12, padding: 10 }}>Pekerja tidak ditemukan</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         )}
-                        {/* Header with Back Button */}
+
+                        {/* Header */}
                         <header className="page-header" style={{
-                            padding: '16px 20px 4px', // Compact padding
+                            padding: '16px 20px 4px',
                             background: `linear-gradient(135deg, ${bidang.color || 'var(--primary)'}, ${bidang.color || 'var(--secondary)'}dd)`,
                             color: 'white',
                             boxShadow: `0 10px 30px ${(bidang.color || 'var(--primary)')}44`
@@ -2961,31 +2977,15 @@
                                     </div>
                                     <h2 style={{ fontSize: 16, fontWeight: 800 }}>{bidang.name}</h2>
                                 </div>
-                                <button onClick={() => setShowMemberSelector(true)} style={{
-                                    padding: '6px 12px',
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: 10,
-                                    color: 'white',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    cursor: 'pointer'
+                                <button onClick={() => { setSelectedDiscussionIdx(null); setShowMemberSelector(true); }} style={{
+                                    padding: '6px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
                                 }}>
                                     <Icon name="user-plus" size={14} /> Undangan
                                 </button>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                <div style={{
-                                    width: 36, height: 36,
-                                    borderRadius: 10,
-                                    background: 'rgba(255,255,255,0.2)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 18
-                                }}>
+                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                                     {bidang.icon}
                                 </div>
                                 <div>
@@ -2994,32 +2994,22 @@
                                 </div>
                             </div>
 
-                            {/* Custom Menu Bar (Tabs) */}
                             <div style={{ padding: '0 0 10px', position: 'relative', display: 'flex', gap: 8, overflowX: 'auto', zIndex: 10 }}>
                                 {['diskusi', 'materi', 'ahli'].map(t => (
                                     <button
                                         key={t}
                                         onClick={() => setActiveTab(t)}
                                         style={{
-                                            flexShrink: 0,
-                                            padding: '8px 16px', // More compact tabs
-                                            borderRadius: '12px',
+                                            flexShrink: 0, padding: '8px 16px', borderRadius: '12px',
                                             background: activeTab === t ? (bidang.color || 'var(--primary)') : 'var(--bg-card)',
                                             color: activeTab === t ? 'white' : 'var(--text-gray)',
                                             border: `1px solid ${activeTab === t ? 'transparent' : 'var(--border)'}`,
-                                            fontWeight: 700,
-                                            fontSize: '12px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            textTransform: 'capitalize',
-                                            boxShadow: activeTab === t ? `0 8px 16px ${bidang.color}44` : 'none',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 6
+                                            fontWeight: 700, fontSize: '12px', cursor: 'pointer', transition: 'all 0.3s',
+                                            display: 'flex', alignItems: 'center', gap: 6
                                         }}
                                     >
                                         <Icon name={t === 'diskusi' ? 'message-circle' : t === 'materi' ? 'book-open' : 'award'} size={16} />
-                                        {t === 'diskusi' ? `Diskusi (${discussions.length})` : t === 'materi' ? `Materi (${(categoryData.materials || []).length})` : t}
+                                        {t === 'diskusi' ? `Diskusi (${discussions.length})` : t === 'materi' ? `Materi (${(categoryData.materials || []).length})` : t.toUpperCase()}
                                     </button>
                                 ))}
                             </div>
@@ -3034,20 +3024,18 @@
                                             <Icon name="message-square" size={20} color="var(--primary)" />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                            {discussions.length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-gray)', padding: 20 }}>Belum ada materi diskusi di bidang ini.</div>}
                                             {discussions.map((d, i) => (
                                                 <QuestionCard
-                                                    key={i}
-                                                    user={d.user}
-                                                    title={d.title}
-                                                    tags={d.tags}
-                                                    comments={d.comments}
+                                                    key={i} user={d.user} title={d.title} tags={d.tags} comments={d.comments} participants={d.participants}
                                                     onReply={() => handleReplyTo(d.user)}
-                                                    onAddColleague={() => setShowMemberSelector(true)}
+                                                    onAddColleague={() => { setSelectedDiscussionIdx(i); setShowMemberSelector(true); }}
                                                 />
                                             ))}
                                         </div>
                                     </div>
                                 )}
+
                                 {activeTab === 'materi' && (
                                     <div className="animate">
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -3057,273 +3045,149 @@
                                                     const title = prompt('Masukkan Judul Materi:');
                                                     if (title) {
                                                         const newMaterial = {
-                                                            id: Date.now(),
-                                                            title: title,
+                                                            id: Date.now(), title,
                                                             update: new Date().toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-                                                            type: 'DOC',
-                                                            discussions: 0,
-                                                            likes: 0,
-                                                            isLiked: false,
-                                                            url: '#'
+                                                            type: 'PDF', discussions: 0, likes: 0, isLiked: false, url: '#'
                                                         };
-                                                        onUpdateCategoryData(bidang.name, {
-                                                            ...categoryData,
-                                                            materials: [newMaterial, ...(categoryData.materials || [])]
-                                                        });
+                                                        onUpdateCategoryData(bidang.name, { ...categoryData, materials: [newMaterial, ...(categoryData.materials || [])] });
                                                     }
                                                 }}
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    background: 'var(--primary)',
-                                                    border: 'none',
-                                                    borderRadius: 8,
-                                                    color: 'white',
-                                                    fontSize: '12px',
-                                                    fontWeight: 600,
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 4
-                                                }}>
+                                                style={{ padding: '6px 12px', background: 'var(--primary)', border: 'none', borderRadius: 8, color: 'white', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                            >
                                                 <Icon name="plus" size={14} /> Tambah Materi
                                             </button>
                                         </div>
-
                                         {(categoryData.materials || []).map(mat => (
-                                            <div key={mat.id} className="card" style={{ marginBottom: 16, cursor: 'pointer', transition: '0.3s' }} onClick={() => alert(`Membuka Dokumen: ${mat.title}\n\nFitur ini akan menghubungkan ke sistem penyimpanan dokumen internal perusahaaan.`)}>
+                                            <div key={mat.id} className="card" style={{ marginBottom: 16, cursor: 'pointer' }} onClick={() => alert(`Membuka Dokumen: ${mat.title}`)}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                                    <div style={{ padding: 12, background: 'rgba(99, 102, 241, 0.1)', borderRadius: 12, color: 'var(--primary)' }}>
-                                                        <Icon name={mat.type === 'PDF' ? "file-text" : "book-open"} />
-                                                    </div>
+                                                    <div style={{ padding: 12, background: 'rgba(99, 102, 241, 0.1)', borderRadius: 12, color: 'var(--primary)' }}><Icon name="file-text" /></div>
                                                     <div style={{ flex: 1 }}>
                                                         <div style={{ fontWeight: 600 }}>{mat.title}</div>
                                                         <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>Update: {mat.update} • {mat.type}</div>
                                                     </div>
-                                                    <Icon name="external-link" size={16} opacity={0.3} />
                                                 </div>
                                                 <div style={{ display: 'flex', gap: 16, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-gray)' }}>
-                                                        <Icon name="message-circle" size={16} /> {mat.discussions} Diskusi
+                                                    <div onClick={(e) => { e.stopPropagation(); handleAddCommentMaterial(mat.id); }} style={{ fontSize: 12, color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                                        <Icon name="message-circle" size={14} /> {mat.discussions}
                                                     </div>
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const updatedMaterials = categoryData.materials.map(m =>
-                                                                m.id === mat.id ? { ...m, isLiked: !m.isLiked, likes: m.isLiked ? m.likes - 1 : m.likes + 1 } : m
-                                                            );
-                                                            onUpdateCategoryData(bidang.name, { ...categoryData, materials: updatedMaterials });
-                                                        }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: mat.isLiked ? '#EF4444' : 'var(--text-gray)', transition: '0.3s' }}>
-                                                        <Icon name="heart" size={16} fill={mat.isLiked ? '#EF4444' : 'none'} /> {mat.likes} Suka
-                                                    </div>
-                                                    <div
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            globalShare({
-                                                                title: mat.title,
-                                                                text: `Cek materi modul pembelajaran "${bidang.name}" ini: ${mat.title}. Sangat berguna untuk referensi kerja!`,
-                                                            });
-                                                        }}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-gray)', cursor: 'pointer' }}>
-                                                        <Icon name="share-2" size={16} /> Bagikan
+                                                    <div onClick={(e) => { e.stopPropagation(); handleToggleLikeMaterial(mat.id); }} style={{ fontSize: 12, color: mat.isLiked ? '#EF4444' : 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                                        <Icon name="heart" size={14} fill={mat.isLiked ? '#EF4444' : 'none'} color={mat.isLiked ? '#EF4444' : 'currentColor'} /> {mat.likes}
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
-
-                                        {(categoryData.materials || []).length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-gray)' }}>
-                                                <Icon name="inbox" size={48} opacity={0.2} style={{ marginBottom: 16 }} />
-                                                <p>Belum ada modul pembelajaran di bidang ini.</p>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
+
                                 {activeTab === 'ahli' && (
                                     <div className="animate">
                                         <h3 style={{ marginBottom: 16, fontSize: 16 }}>Konsultasi & Diskusi Ahli</h3>
-
-                                        {/* Input Baru */}
                                         <div className="card" style={{ marginBottom: 24, padding: 16 }}>
                                             <div style={{ display: 'flex', gap: 12 }}>
-                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                                                    <Icon name="user" size={20} />
-                                                </div>
+                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><Icon name="user" size={20} /></div>
                                                 <div style={{ flex: 1 }}>
                                                     <textarea
-                                                        placeholder={`Bagikan pemikiran atau materi ahli di bidang ${bidang.name}...`}
+                                                        placeholder={`Bagikan pemikiran ahli di ${bidang.name}...`}
                                                         value={expertPostText}
                                                         onChange={(e) => setExpertPostText(e.target.value)}
-                                                        style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', resize: 'none', minHeight: 60, outline: 'none', fontSize: 14 }}
+                                                        style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', resize: 'none', minHeight: 60, outline: 'none' }}
                                                     />
                                                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                                                         <button
                                                             onClick={() => {
                                                                 if (!expertPostText.trim()) return;
-                                                                const newPost = {
-                                                                    id: Date.now(),
-                                                                    user: currentUserName || "Anda",
-                                                                    role: "Ahli",
-                                                                    content: expertPostText,
-                                                                    timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                                                                    comments: []
-                                                                };
-                                                                onUpdateCategoryData(bidang.name, {
-                                                                    ...categoryData,
-                                                                    expertPosts: [newPost, ...(categoryData.expertPosts || [])]
-                                                                });
+                                                                const newPost = { id: Date.now(), user: currentUserName || "Anda", role: "Ahli", content: expertPostText, timestamp: 'Baru saja', comments: [] };
+                                                                onUpdateCategoryData(bidang.name, { ...categoryData, expertPosts: [newPost, ...(categoryData.expertPosts || [])] });
                                                                 setExpertPostText('');
-
-                                                                // Trigger Notification
-                                                                if (addNotification) {
-                                                                    addNotification({
-                                                                        title: 'Materi Ahli Baru',
-                                                                        desc: `${currentUserName || 'Seseorang'} menambahkan materi di ${bidang.name}`,
-                                                                        type: 'message',
-                                                                        target: 'bidang',
-                                                                        targetId: bidang.name
-                                                                    });
-                                                                }
                                                             }}
-                                                            style={{ padding: '8px 16px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
-                                                        >
-                                                            Posting
-                                                        </button>
+                                                            style={{ padding: '8px 16px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
+                                                        >Posting</button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Daftar Postingan Ahli */}
-                                        {(categoryData.expertPosts || []).length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-gray)' }}>Belum ada diskusi ahli dimulai.</div>}
-
                                         {(categoryData.expertPosts || []).map(post => (
-                                            <div key={post.id} className="card" style={{ marginBottom: 16, position: 'relative' }}>
+                                            <div key={post.id} className="card" style={{ marginBottom: 16 }}>
                                                 <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(45deg, #10B981, #3B82F6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                                                        {post.user[0]}
-                                                    </div>
+                                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(45deg, #10B981, #3B82F6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>{post.user[0]}</div>
                                                     <div style={{ flex: 1 }}>
-                                                        <div style={{ fontWeight: 600 }}>{post.user} {post.role === 'Ahli' && <Icon name="check-circle" size={12} fill="#3B82F6" color="white" />}</div>
+                                                        <div style={{ fontWeight: 600 }}>{post.user} <Icon name="check-circle" size={12} fill="#3B82F6" color="white" /></div>
                                                         <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>{post.timestamp}</div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm('Hapus postingan ini?')) {
-                                                                const updated = (categoryData.expertPosts || []).filter(p => p.id !== post.id);
-                                                                onUpdateCategoryData(bidang.name, { ...categoryData, expertPosts: updated });
-                                                            }
-                                                        }}
-                                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, opacity: 0.5 }}
-                                                    >
-                                                        <Icon name="trash-2" size={16} color="#EF4444" />
-                                                    </button>
                                                 </div>
-
-                                                <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 16, whiteSpace: 'pre-wrap' }}>
-                                                    {post.content}
+                                                <div style={{ fontSize: 14, lineHeight: 1.5, marginBottom: 16 }}>{post.content}</div>
+                                                <div onClick={() => setVisibleComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))} style={{ fontSize: 13, color: 'var(--text-gray)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <Icon name="message-circle" size={16} /> {post.comments?.length || 0} Komentar
                                                 </div>
-
-                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
-                                                    <div
-                                                        onClick={() => setVisibleComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-gray)', cursor: 'pointer' }}
-                                                    >
-                                                        <Icon name="message-circle" size={18} /> {post.comments?.length || 0} Komentar
-                                                    </div>
-                                                </div>
-
-                                                {/* Komentar Section */}
                                                 {visibleComments[post.id] && (
-                                                    <div className="animate" style={{ marginTop: 16, paddingLeft: 16, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                                                            {(post.comments || []).map(c => (
-                                                                <div key={c.id} style={{ fontSize: 13 }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                                        <span style={{ fontWeight: 700, color: '#ddd' }}>{c.user}</span>
-                                                                        <span style={{ fontSize: 10, color: 'var(--text-gray)' }}>{c.timestamp}</span>
-                                                                    </div>
-                                                                    <div style={{ color: 'var(--text-gray)' }}>{c.text}</div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        <div style={{ display: 'flex', gap: 8 }}>
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Tulis komentar..."
-                                                                value={commentInputs[post.id] || ''}
-                                                                onChange={e => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                                                style={{ flex: 1, padding: '8px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', fontSize: 13 }}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        const txt = commentInputs[post.id];
-                                                                        if (!txt?.trim()) return;
-                                                                        const newComment = { id: Date.now(), user: currentUserName || 'Anda', text: txt, timestamp: 'Baru saja' };
-
-                                                                        const updatedPosts = categoryData.expertPosts.map(p => {
-                                                                            if (p.id === post.id) {
-                                                                                return { ...p, comments: [...(p.comments || []), newComment] };
-                                                                            }
-                                                                            return p;
-                                                                        });
-
-                                                                        onUpdateCategoryData(bidang.name, { ...categoryData, expertPosts: updatedPosts });
-                                                                        setCommentInputs(prev => ({ ...prev, [post.id]: '' }));
-
-                                                                        if (addNotification) {
-                                                                            addNotification({
-                                                                                title: 'Komentar Baru',
-                                                                                desc: `${currentUserName || 'Seseorang'} mengomentari materi di ${bidang.name}`,
-                                                                                type: 'message',
-                                                                                target: 'bidang',
-                                                                                targetId: bidang.name
-                                                                            });
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </div>
+                                                    <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+                                                        {(post.comments || []).map(c => (
+                                                            <div key={c.id} style={{ marginBottom: 8, fontSize: 13 }}>
+                                                                <span style={{ fontWeight: 700 }}>{c.user}: </span> {c.text}
+                                                            </div>
+                                                        ))}
+                                                        <input
+                                                            type="text" placeholder="Balas..."
+                                                            value={commentInputs[post.id] || ''}
+                                                            onChange={e => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter' && commentInputs[post.id]) {
+                                                                    const newComment = { id: Date.now(), user: currentUserName || 'Anda', text: commentInputs[post.id], timestamp: 'Baru saja' };
+                                                                    const updated = categoryData.expertPosts.map(p => p.id === post.id ? { ...p, comments: [...(p.comments || []), newComment] } : p);
+                                                                    onUpdateCategoryData(bidang.name, { ...categoryData, expertPosts: updated });
+                                                                    setCommentInputs(prev => ({ ...prev, [post.id]: '' }));
+                                                                }
+                                                            }}
+                                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 8, padding: '8px 12px', color: 'white', marginTop: 8 }}
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                            </div>
 
-                            {/* Public Chat Input Area (Always visible for members to see everything) */}
-                            <div style={{ marginTop: 20, background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Icon name="globe" size={12} /> {activeTab === 'diskusi' ? 'Gunakan @nama untuk membalas diskusi' : `Tulis pesan di forum publik ${bidang.name}`}
+                                {/* Chat Feed Area (Persistent) */}
+                                <div style={{ marginTop: 32, padding: '24px 0', borderTop: '1px solid var(--border)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                                        <div style={{ width: 8, height: 8, background: '#10B981', borderRadius: '50%' }}></div>
+                                        <h3 style={{ fontSize: 14, fontWeight: 700 }}>Percakapan Publik</h3>
+                                    </div>
+                                    <div style={{ maxHeight: 400, overflowY: 'auto', paddingRight: 8, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        {(categoryData.chatMessages || []).length === 0 && <div style={{ textAlign: 'center', color: 'var(--text-gray)', fontSize: 13 }}>Belum ada pesan. Mulai obrolan sekarang!</div>}
+                                        {(categoryData.chatMessages || []).map((m, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: 12, flexDirection: m.self ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
+                                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: m.self ? 'var(--primary)' : 'rgba(255,255,255,0.1)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{m.user[0]}</div>
+                                                <div style={{ maxWidth: '80%', background: m.self ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.03)', padding: 12, borderRadius: m.self ? '12px 0 12px 12px' : '0 12px 12px 12px', border: '1px solid var(--border)' }}>
+                                                    <div style={{ fontSize: 11, fontWeight: 700, color: m.self ? 'var(--primary)' : '#ddd', marginBottom: 4 }}>{m.user}</div>
+                                                    <div style={{ fontSize: 13 }}>{m.text}</div>
+                                                    {m.attachment && (
+                                                        <div onClick={() => downloadFile(m.attachment.data, m.attachment.name)} style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                            <Icon name="file-text" size={14} />
+                                                            <div style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.attachment.name}</div>
+                                                            <Icon name="download" size={14} opacity={0.5} />
+                                                        </div>
+                                                    )}
+                                                    <div style={{ fontSize: 9, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right' }}>{m.time}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                    <input
-                                        type="file"
-                                        ref={chatFileRef}
-                                        style={{ display: 'none' }}
-                                        onChange={handleChatFileSelect}
-                                    />
-                                    <button
-                                        onClick={() => chatFileRef.current.click()}
-                                        style={{ width: 40, height: 40, borderRadius: 10, background: selectedFile ? '#10B981' : 'rgba(255,255,255,0.1)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' }}>
-                                        <Icon name={selectedFile ? 'check' : 'paperclip'} size={18} />
-                                    </button>
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        placeholder={activeTab === 'diskusi' ? "Tanya sesuatu atau @balas..." : "Tulis pendapat atau pertanyaanmu..."}
-                                        style={{ flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', color: 'white', fontSize: 13, outline: 'none' }}
-                                        value={msg}
-                                        onChange={e => setMsg(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && handleSend()}
-                                    />
-                                    <button
-                                        onClick={handleSend}
-                                        style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                        <Icon name="send" size={18} />
-                                    </button>
-                                </div>
+                            </div>
+                        </div>
+
+                        {/* Input Area */}
+                        <div style={{ padding: 20, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <input type="file" ref={chatFileRef} style={{ display: 'none' }} onChange={handleChatFileSelect} />
+                                <button onClick={() => chatFileRef.current.click()} style={{ width: 40, height: 40, borderRadius: 12, background: selectedFile ? '#10B981' : 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer' }}><Icon name={selectedFile ? 'check' : 'paperclip'} size={18} /></button>
+                                <input
+                                    ref={inputRef} type="text" placeholder="Ketik pesan..."
+                                    style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 16px', color: 'white', outline: 'none' }}
+                                    value={msg} onChange={e => setMsg(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()}
+                                />
+                                <button onClick={handleSend} style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', border: 'none', color: 'white', cursor: 'pointer' }}><Icon name="send" size={18} /></button>
                             </div>
                         </div>
                     </div>
@@ -3911,6 +3775,7 @@
             const [msg, setMsg] = useState('');
             const [chatFile, setChatFile] = useState(null);
             const fileRef = useRef(null);
+            const mediaInputRef = useRef(null);
             const [showAddMember, setShowAddMember] = useState(false);
             const [memberSearchTerm, setMemberSearchTerm] = useState('');
             const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -3949,6 +3814,29 @@
                 } else {
                     processMsg();
                 }
+            };
+
+            const handleMediaTabUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const newMsg = {
+                        id: Date.now(),
+                        user: currentUser,
+                        text: `📦 Mengirim file: ${file.name}`,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        self: true,
+                        attachment: { name: file.name, data: reader.result, type: file.type }
+                    };
+                    const updatedMsgs = [...messages, newMsg];
+                    setMessages(updatedMsgs);
+                    onUpdateGroup({ ...group, messages: updatedMsgs });
+                    alert(`Media "${file.name}" berhasil diunggah!`);
+                };
+                reader.readAsDataURL(file);
+                e.target.value = null;
             };
 
             const downloadFile = (data, name) => {
@@ -4109,8 +3997,17 @@
                         </div>
                     ) : activeTab === 'media' ? (
                         <div style={{ padding: 20 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 16 }}>Media ({mediaList.length})</div>
-                            {mediaList.length === 0 ? <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Belum ada file.</div> : (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Media ({mediaList.length})</div>
+                                <button onClick={() => mediaInputRef.current.click()} style={{
+                                    padding: '8px 16px', borderRadius: 10, background: 'rgba(99, 102, 241, 0.15)', border: '1px solid var(--primary)',
+                                    color: 'var(--primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                                }}>
+                                    <Icon name="plus" size={16} /> Tambah Media
+                                </button>
+                                <input type="file" ref={mediaInputRef} style={{ display: 'none' }} onChange={handleMediaTabUpload} />
+                            </div>
+                            {mediaList.length === 0 ? <div style={{ textAlign: 'center', padding: 40, color: '#64748b', background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed rgba(255,255,255,0.1)' }}>Belum ada file.</div> : (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 }}>
                                     {mediaList.map((m, idx) => {
                                         const isImage = m.attachment.type && m.attachment.type.startsWith('image/');
@@ -4240,7 +4137,7 @@
         };
 
         // --- Anggota (Membership & Friends) Screen ---
-        const Anggota = ({ isPrivateMode, registeredUsers = [], onNavigate, userName }) => {
+        const Anggota = ({ isPrivateMode, registeredUsers = [], onNavigate, userName, friends = [], onUpdateFriends }) => {
             const [searchTerm, setSearchTerm] = useState('');
             const [activeTab, setActiveTab] = useState('semua'); // semua, teman, grup
             const [selectedMember, setSelectedMember] = useState(null);
@@ -4263,7 +4160,7 @@
                     name: u.name,
                     role: u.role || 'User Baru',
                     status: 'Online',
-                    isFriend: false,
+                    isFriend: (friends || []).includes(u.id),
                     email: u.email || 'user@local.com',
                     items: u.items || 1, // Persist items if possible, else 1
                     image: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=random`,
@@ -4283,27 +4180,16 @@
                     }
                 });
 
-                return combined.sort((a, b) => b.items - a.items);
+                return combined.map(m => ({ ...m, isFriend: (friends || []).includes(m.id) })).sort((a, b) => b.items - a.items);
             });
 
             // Simulate updating stats automatically
             useEffect(() => {
-                const interval = setInterval(() => {
-                    setAllMembers(prevMembers => {
-                        return prevMembers.map(m => {
-                            if (Math.random() > 0.7) { // 30% chance to update each second
-                                const newItems = m.items + 1;
-                                const newStats = [...(m.weeklyStats || [])];
-                                newStats[6] = (newStats[6] || 0) + 1; // Increment today's stat
-                                return { ...m, items: newItems, weeklyStats: newStats };
-                            }
-                            return m;
-                        }).sort((a, b) => b.items - a.items); // Re-sort dynamically
-                    });
-                }, 3000); // Pulse every 3 seconds
-
-                return () => clearInterval(interval);
-            }, []);
+                setAllMembers(prev => prev.map(m => ({
+                    ...m,
+                    isFriend: (friends || []).includes(m.id)
+                })));
+            }, [friends]);
 
             const filteredMembers = allMembers.filter(m => {
                 const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.role.toLowerCase().includes(searchTerm.toLowerCase());
@@ -4313,7 +4199,10 @@
 
             // Action Handlers
             const handleAddFriend = (member) => {
-                setAllMembers(prev => prev.map(m => m.id === member.id ? { ...m, isFriend: true } : m));
+                const isFriend = (friends || []).includes(member.id);
+                if (!isFriend) {
+                    onUpdateFriends([...(friends || []), member.id]);
+                }
                 alert(`Anda berteman dengan ${member.name}!`);
             };
 
@@ -4325,11 +4214,12 @@
             };
 
             const toggleFriendStatus = (member) => {
-                const newStatus = !member.isFriend;
-                setAllMembers(prev => prev.map(m => m.id === member.id ? { ...m, isFriend: newStatus } : m));
-                alert(newStatus ? `Ditambahkan ke teman: ${member.name}` : `Dihapus dari teman: ${member.name}`);
+                const isFriend = (friends || []).includes(member.id);
+                const newFriends = isFriend ? friends.filter(id => id !== member.id) : [...(friends || []), member.id];
+                onUpdateFriends(newFriends);
+                alert(!isFriend ? `Ditambahkan ke teman: ${member.name}` : `Dihapus dari teman: ${member.name}`);
                 if (selectedMember && selectedMember.id === member.id) {
-                    setSelectedMember(prev => ({ ...prev, isFriend: newStatus }));
+                    setSelectedMember(prev => ({ ...prev, isFriend: !isFriend }));
                 }
             };
 
@@ -4364,17 +4254,18 @@
                     <Background3D color1="var(--primary)" color2="var(--secondary)">
                         <div className="animate">
                             <header className="page-header" style={{
-                                padding: '12px 16px 0', borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-                                background: 'linear-gradient(135deg, var(--primary), var(--secondary))'
+                                padding: '24px 16px 0',
+                                background: 'linear-gradient(to right, #6366f1, #ec4899)',
+                                borderBottomLeftRadius: 0, borderBottomRightRadius: 0
                             }}>
                                 <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'white' }}>Anggota & Grup</h1>
                                 <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', marginTop: 2 }}>Kelola koneksi dan grup kerja Anda.</p>
 
                                 <div className="search-bar" style={{
                                     background: 'rgba(255,255,255,0.2)', border: 'none',
-                                    marginTop: 10, padding: '8px 12px'
+                                    marginTop: 18, padding: '10px 14px', borderRadius: 14
                                 }}>
-                                    <Icon name="search" color="white" size={18} />
+                                    <Icon name="search" color="rgba(255,255,255,0.7)" size={18} />
                                     <input
                                         type="text"
                                         placeholder="Cari anggota atau grup..."
@@ -4385,19 +4276,20 @@
                                 </div>
 
                                 {/* Menu Tabs */}
-                                <div style={{ display: 'flex', gap: 20, marginTop: 16, overflowX: 'auto' }}>
+                                <div style={{ display: 'flex', gap: 24, marginTop: 20, overflowX: 'auto', paddingBottom: 4 }}>
                                     {['semua', 'teman', 'grup', 'kontribusi'].map(t => (
                                         <div
                                             key={t}
                                             onClick={() => setActiveTab(t)}
                                             style={{
-                                                paddingBottom: 12,
+                                                paddingBottom: 10,
                                                 cursor: 'pointer',
-                                                borderBottom: activeTab === t ? '3px solid white' : '3px solid transparent',
+                                                borderBottom: activeTab === t ? '4px solid white' : '4px solid transparent',
                                                 fontWeight: activeTab === t ? 700 : 500,
                                                 color: activeTab === t ? 'white' : 'rgba(255,255,255,0.6)',
                                                 textTransform: 'capitalize',
-                                                fontSize: 14
+                                                fontSize: 14,
+                                                letterSpacing: 0.5
                                             }}
                                         >
                                             {t}
@@ -4491,44 +4383,36 @@
                                         )}
 
                                         <h3 style={{ fontSize: 16, marginBottom: 16, marginTop: 16 }}>{activeTab === 'teman' ? 'Teman Saya' : 'Daftar Anggota'}</h3>
-                                        <div className="grid-responsive">
+                                        <div className="grid-responsive" style={{ paddingTop: 8 }}>
                                             {filteredMembers.map(m => (
-                                                <div key={m.id} className="card" onClick={() => setSelectedMember(m)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, cursor: 'pointer' }}>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <img src={m.isPrivate ? 'https://www.w3schools.com/howto/img_avatar.png' : m.image} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', filter: m.isPrivate ? 'grayscale(1) blur(1px)' : 'none' }} />
+                                                <div key={m.id} className="card animate" onClick={() => setSelectedMember(m)} style={{
+                                                    display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px',
+                                                    cursor: 'pointer', background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20
+                                                }}>
+                                                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                        <img src={m.isPrivate ? 'https://www.w3schools.com/howto/img_avatar.png' : m.image} style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)', filter: m.isPrivate ? 'grayscale(1) blur(1px)' : 'none' }} />
                                                         <div style={{
-                                                            position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: '50%',
+                                                            position: 'absolute', bottom: 2, right: 2, width: 14, height: 14, borderRadius: '50%',
                                                             background: m.status === 'Online' ? '#10B981' : (m.status === 'Baru Bergabung' ? '#3B82F6' : '#8B949E'),
-                                                            border: '2px solid var(--bg-card)'
+                                                            border: '3px solid #161b22'
                                                         }}></div>
                                                     </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontWeight: 700, fontSize: 15 }}>{m.isPrivate ? 'Anggota Privat' : m.name}</div>
-                                                        <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>{m.role}</div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 800, fontSize: 16, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.isPrivate ? 'Anggota Privat' : m.name}</div>
+                                                        <div style={{ fontSize: 12, color: '#8b949e', fontWeight: 500 }}>{m.role}</div>
                                                     </div>
                                                     {/* Action Button Small */}
-                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                    <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); toggleFriendStatus(m); }}
                                                             style={{
-                                                                padding: '8px', background: m.isFriend ? 'rgba(255,255,255,0.05)' : 'var(--primary)',
-                                                                border: m.isFriend ? '1px solid var(--border)' : 'none', borderRadius: 10,
-                                                                color: m.isFriend ? 'var(--text-gray)' : 'white', cursor: 'pointer'
+                                                                padding: '10px', background: m.isFriend ? 'rgba(255,255,255,0.05)' : 'rgba(99, 102, 241, 0.15)',
+                                                                border: 'none', borderRadius: 12,
+                                                                color: m.isFriend ? '#8b949e' : 'var(--primary)', cursor: 'pointer'
                                                             }}
                                                         >
-                                                            <Icon name={m.isFriend ? "user-check" : "user-plus"} size={16} />
-                                                        </button>
-
-                                                        {/* Delete Button (Contextual) */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleRemoveUser(m); }}
-                                                            style={{
-                                                                padding: '8px', background: 'rgba(239, 68, 68, 0.1)',
-                                                                border: 'none', borderRadius: 10,
-                                                                color: '#EF4444', cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <Icon name="trash-2" size={16} />
+                                                            <Icon name={m.isFriend ? "user-check" : "user-plus"} size={18} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -4669,64 +4553,65 @@
                             {selectedMember && (
                                 <div style={{
                                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                                    background: 'rgba(0,0,0,0.8)', zIndex: 5000,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', pading: 20
+                                    background: 'rgba(0,0,0,0.85)', zIndex: 5000,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
                                 }} onClick={() => setSelectedMember(null)}>
                                     <div className="animate" style={{
-                                        width: '90%', maxWidth: 400, background: 'var(--bg-card)',
-                                        borderRadius: 24, border: '1px solid var(--primary)', overflow: 'hidden',
-                                        position: 'relative'
+                                        width: '100%', maxWidth: 360, background: '#161b22',
+                                        borderRadius: 28, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
+                                        position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
                                     }} onClick={e => e.stopPropagation()}>
                                         {/* Cover Image */}
-                                        <div style={{ height: 120, background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}></div>
+                                        <div style={{ height: 100, background: 'linear-gradient(to right, #6366f1, #ec4899)' }}></div>
 
                                         {/* Profile Image */}
                                         <div style={{ textAlign: 'center', marginTop: -50 }}>
                                             <div style={{
-                                                width: 100, height: 100, borderRadius: '50%', border: '4px solid var(--bg-card)',
-                                                margin: '0 auto', overflow: 'hidden', background: 'var(--bg-card)'
+                                                width: 100, height: 100, borderRadius: '50%', border: '5px solid #161b22',
+                                                margin: '0 auto', overflow: 'hidden', background: '#21262d', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)'
                                             }}>
                                                 <img src={selectedMember.isPrivate ? 'https://www.w3schools.com/howto/img_avatar.png' : selectedMember.image} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: selectedMember.isPrivate ? 'grayscale(1) blur(2px)' : 'none' }} />
                                             </div>
                                         </div>
 
-                                        <div style={{ padding: 24, textAlign: 'center' }}>
-                                            <h2 style={{ fontSize: 20, marginBottom: 4 }}>{selectedMember.isPrivate ? 'Anggota Privat' : selectedMember.name}</h2>
-                                            <div style={{ color: 'var(--text-gray)', fontSize: 14 }}>{selectedMember.role}</div>
+                                        <div style={{ padding: '20px 24px 30px', textAlign: 'center' }}>
+                                            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'white', marginBottom: 4 }}>{selectedMember.isPrivate ? 'Anggota Privat' : selectedMember.name}</h2>
+                                            <div style={{ color: '#8b949e', fontSize: 13, fontWeight: 500 }}>{selectedMember.role}</div>
 
                                             {!selectedMember.isPrivate && (
                                                 <>
-                                                    <div style={{ margin: '16px auto', display: 'flex', justifyContent: 'center', gap: 20 }}>
+                                                    <div style={{ margin: '24px auto', display: 'flex', justifyContent: 'center', gap: 30 }}>
                                                         <div style={{ textAlign: 'center' }}>
-                                                            <div style={{ fontWeight: 800, fontSize: 16 }}>{selectedMember.items || 0}</div>
-                                                            <div style={{ fontSize: 10, color: 'var(--text-gray)' }}>KONTRIBUSI</div>
+                                                            <div style={{ fontWeight: 800, fontSize: 18, color: 'white' }}>{selectedMember.items || 0}</div>
+                                                            <div style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, letterSpacing: 0.5 }}>KONTRIBUSI</div>
                                                         </div>
                                                         <div style={{ textAlign: 'center' }}>
-                                                            <div style={{ fontWeight: 800, fontSize: 16 }}>4.8</div>
-                                                            <div style={{ fontSize: 10, color: 'var(--text-gray)' }}>RATING</div>
+                                                            <div style={{ fontWeight: 800, fontSize: 18, color: 'white' }}>4.8</div>
+                                                            <div style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, letterSpacing: 0.5 }}>RATING</div>
                                                         </div>
                                                         <div style={{ textAlign: 'center' }}>
-                                                            <div style={{ fontWeight: 800, fontSize: 16, color: selectedMember.status === 'Online' ? '#10B981' : 'gray' }}>{selectedMember.status}</div>
-                                                            <div style={{ fontSize: 10, color: 'var(--text-gray)' }}>STATUS</div>
+                                                            <div style={{ fontWeight: 800, fontSize: 18, color: '#3fb950' }}>{selectedMember.status}</div>
+                                                            <div style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, letterSpacing: 0.5 }}>STATUS</div>
                                                         </div>
                                                     </div>
 
-                                                    {/* Weekly Performance Chart (Dynamic) */}
-                                                    <div style={{ margin: '20px 0', padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
-                                                        <h4 style={{ fontSize: 12, marginBottom: 12, color: 'var(--text-gray)', textAlign: 'left' }}>Kinerja Mingguan</h4>
-                                                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 60, gap: 4 }}>
+                                                    {/* Weekly Performance Chart */}
+                                                    <div style={{ margin: '20px 0', padding: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 16, color: '#8b949e', textAlign: 'left' }}>Kinerja Mingguan</h4>
+                                                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 80, gap: 10 }}>
                                                             {(selectedMember.weeklyStats || [2, 5, 3, 8, 4, 6, 9]).map((val, idx) => {
                                                                 const heightPct = Math.min((val / 15) * 100, 100);
                                                                 return (
-                                                                    <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                                                    <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                                                         <div style={{
                                                                             width: '100%',
-                                                                            height: `${Math.max(heightPct, 10)}%`,
-                                                                            background: idx === 6 ? 'var(--primary)' : 'rgba(255,255,255,0.2)',
+                                                                            height: `${Math.max(heightPct, 8)}px`,
+                                                                            background: idx === 6 ? '#238636' : '#21262d',
                                                                             borderRadius: 4,
-                                                                            transition: 'height 0.5s ease'
+                                                                            transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                                            maxHeight: '100%'
                                                                         }}></div>
-                                                                        <div style={{ fontSize: 9, color: 'var(--text-gray)' }}>{['S', 'S', 'R', 'K', 'J', 'S', 'M'][idx]}</div>
+                                                                        <div style={{ fontSize: 9, color: '#484f58', fontWeight: 600 }}>{['S', 'S', 'R', 'K', 'J', 'S', 'M'][idx]}</div>
                                                                     </div>
                                                                 )
                                                             })}
@@ -4735,28 +4620,29 @@
                                                 </>
                                             )}
 
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 28 }}>
                                                 <button
                                                     onClick={() => toggleFriendStatus(selectedMember)}
                                                     style={{
-                                                        padding: 14, background: selectedMember.isFriend ? 'var(--bg-card)' : 'var(--primary)',
-                                                        border: selectedMember.isFriend ? '1px solid var(--border)' : 'none', borderRadius: 12,
-                                                        color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer'
-                                                    }}>
+                                                        padding: '14px', background: 'transparent',
+                                                        border: '1px solid #30363d', borderRadius: 14,
+                                                        color: 'white', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                                >
                                                     {selectedMember.isFriend ? 'Hapus Teman' : 'Tambah Teman'}
                                                 </button>
                                                 <div style={{ display: 'flex', gap: 12 }}>
-                                                    <button onClick={() => {
-                                                        if (onNavigate) onNavigate('pesan');
-                                                        // Optional: You could also pass the selected user to the message tab here
-                                                    }} style={{ flex: 1, padding: 12, background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: 12, color: 'white', fontSize: 13, cursor: 'pointer' }}>Kirim Pesan</button>
-                                                    <button onClick={() => handleRemoveUser(selectedMember)} style={{ flex: 1, padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: 12, color: '#EF4444', fontSize: 13, cursor: 'pointer' }}>Hapus User</button>
+                                                    <button onClick={() => { if (onNavigate) onNavigate('pesan'); setSelectedMember(null); }} style={{ flex: 1, padding: '14px', background: '#21262d', border: 'none', borderRadius: 14, color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Kirim Pesan</button>
+                                                    <button onClick={() => { handleRemoveUser(selectedMember); setSelectedMember(null); }} style={{ flex: 1, padding: '14px', background: 'rgba(248, 81, 73, 0.1)', border: 'none', borderRadius: 14, color: '#f85149', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Hapus User</button>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div onClick={() => setSelectedMember(null)} style={{ position: 'absolute', top: 10, right: 10, padding: 8, background: 'rgba(0,0,0,0.3)', borderRadius: '50%', color: 'white', cursor: 'pointer' }}>
-                                            <Icon name="x" size={20} />
+                                        <div onClick={() => setSelectedMember(null)} style={{ position: 'absolute', top: 14, right: 14, pading: 8, color: 'white', cursor: 'pointer', opacity: 0.7 }}>
+                                            <Icon name="x" size={24} />
                                         </div>
                                     </div>
                                 </div>
@@ -5100,7 +4986,6 @@
         };
 
         // Global Categories Data (Shared)
-        const REGISTERED_MEMBERS = []; // Fallback for legacy references
         const CATEGORIES_DATA = [
             { name: 'Hardware', icon: <img src="ICON HDW.png" alt="Hardware" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))' }} />, color: '#3B82F6' },
             { name: 'Software', icon: '💿', color: '#8B5CF6' },
@@ -5193,8 +5078,8 @@
 
         // --- MAIN APP ---
         function App() {
-            // Skip splash to prevent DOM conflicts and faster load
-            const [screen, setScreen] = useState(() => redis.get('userName') ? 'main' : 'auth');
+            // Always force splash screen on first load
+            const [screen, setScreen] = useState('splash');
             const [onboardingStep, setOnboardingStep] = useState(0);
 
             // State Initialization via Redis Database
@@ -5212,6 +5097,7 @@
             ]));
             const [userRole, setUserRole] = useState(() => redis.get('userRole', 'Admin')); // Default: Admin
             const [isPrivate, setIsPrivate] = useState(() => redis.get('isPrivate', false));
+            const [userFriends, setUserFriends] = useState(() => redis.get('userFriends', []));
             const [selectedBidang, setSelectedBidang] = useState(null);
 
             // Load Knowledge Base & Category Data from Redis
@@ -5226,7 +5112,7 @@
             ]));
 
             // Registered Users State
-            const [allUsers] = useState(() => redis.get('users_db', []));
+            const [allUsers, setAllUsers] = useState(() => redis.get('users_db', []));
 
             // Redis Persistence Effect (Auto-Save)
             useEffect(() => {
@@ -5242,10 +5128,36 @@
                 redis.set('activityLog', activityLog);
                 redis.set('userRole', userRole);
                 redis.set('isPrivate', isPrivate);
+                redis.set('userFriends', userFriends);
                 redis.set('knowledge', knowledge);
                 redis.set('categoryData', categoryData);
                 redis.set('notifications', notifications);
-            }, [screen, tab, userName, userBio, userPhoto, activityLog, userRole, isPrivate, knowledge, categoryData, notifications]);
+            }, [screen, tab, userName, userBio, userPhoto, activityLog, userRole, isPrivate, userFriends, knowledge, categoryData, notifications]);
+
+            // Browser History Navigation Handler (Moved to hooks area)
+            useEffect(() => {
+                // Push state on tab change/bidang selection
+                window.history.pushState(
+                    { tab, selectedBidang: selectedBidang ? selectedBidang.name : null },
+                    '',
+                    `#${tab}${selectedBidang ? '/' + encodeURIComponent(selectedBidang.name) : ''}`
+                );
+
+                const handlePopState = (event) => {
+                    if (event.state) {
+                        setTab(event.state.tab || 'home');
+                        if (event.state.selectedBidang === null) {
+                            setSelectedBidang(null);
+                        } else {
+                            // If we have a bidang name in state, restore it if possible
+                            const found = CATEGORIES_DATA.find(c => c.name === event.state.selectedBidang);
+                            if (found) setSelectedBidang(found);
+                        }
+                    }
+                };
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, [tab, selectedBidang]);
 
             const addNotification = (notif) => {
                 const newNotif = { ...notif, id: Date.now(), time: 'Baru saja', unread: true };
@@ -5333,6 +5245,7 @@
                     const newUser = { id: Date.now(), name: name || 'User', email, password, role: 'User', joinedAt: new Date().toISOString() };
                     users.push(newUser);
                     redis.set('users_db', users);
+                    setAllUsers(users); // Update state
 
                     alert('Registrasi Berhasil! Selamat datang, ' + newUser.name);
                     setUserName(newUser.name);
@@ -5465,6 +5378,7 @@
                                 }} />
                             </div>
                         </div>
+
                         <div className={`nav-item ${tab === 'home' ? 'active' : ''}`} data-menu="home" onClick={() => { setTab('home'); setSelectedBidang(null); }}>
                             <Icon name="home" />
                             <span>Beranda</span>
@@ -5496,61 +5410,75 @@
                     <div className="main-content">
                         {/* Home & Bidang Detail Layer */}
                         <div style={{ display: tab === 'home' ? 'block' : 'none' }}>
-                            {selectedBidang ? (
-                                <BidangDetail
-                                    bidang={selectedBidang}
-                                    onBack={() => setSelectedBidang(null)}
-                                    currentUserName={userName}
-                                    onAddKnowledge={handleAddKnowledge}
-                                    categoryData={getCategoryData(selectedBidang.name)}
-                                    onUpdateCategoryData={handleUpdateCategoryData}
-                                />
-                            ) : (
-                                <Home
-                                    userName={userName}
-                                    userRole={userRole} // Pass role to Home
-                                    checkPermission={(action) => checkPermission(userRole, action)} // Pass checker
-                                    onCreateQuestion={() => {
-                                        if (checkPermission(userRole, 'create_user')) {
-                                            alert('Access Granted: Membuka Form Create Question (Admin/Privileged).');
-                                        } else {
-                                            alert('Access Denied: Anda tidak memiliki izin untuk membuat pertanyaan global.');
-                                        }
-                                    }}
-                                    onBidangClick={(bidang) => setSelectedBidang(bidang)}
-                                    onNavigate={(target) => setTab(target)}
-                                    onOpenDB={() => setScreen('db_manager')}
-                                    onLogout={handleLogout}
-                                    knowledgeBase={knowledge}
-                                    getCategoryCount={getCategoryCount}
-                                    categories={CATEGORIES_DATA}
-                                />
-                            )}
+                            {
+                                selectedBidang ? (
+                                    <BidangDetail
+                                        bidang={selectedBidang}
+                                        onBack={() => setSelectedBidang(null)}
+                                        currentUserName={userName}
+                                        onAddKnowledge={handleAddKnowledge}
+                                        categoryData={getCategoryData(selectedBidang.name)}
+                                        onUpdateCategoryData={handleUpdateCategoryData}
+                                        addNotification={addNotification}
+                                        registeredMembers={allUsers}
+                                    />
+                                ) : (
+                                    <Home
+                                        userName={userName}
+                                        userRole={userRole} // Pass role to Home
+                                        checkPermission={(action) => checkPermission(userRole, action)} // Pass checker
+                                        onCreateQuestion={() => {
+                                            if (checkPermission(userRole, 'create_user')) {
+                                                alert('Access Granted: Membuka Form Create Question (Admin/Privileged).');
+                                            } else {
+                                                alert('Access Denied: Anda tidak memiliki izin untuk membuat pertanyaan global.');
+                                            }
+                                        }}
+                                        onBidangClick={(bidang) => setSelectedBidang(bidang)}
+                                        onNavigate={(target) => setTab(target)}
+                                        onOpenDB={() => setScreen('db_manager')}
+                                        onLogout={handleLogout}
+                                        knowledgeBase={knowledge}
+                                        getCategoryCount={getCategoryCount}
+                                        categories={CATEGORIES_DATA}
+                                    />
+                                )}
                         </div>
 
                         {/* Bidang Layer */}
                         <div style={{ display: tab === 'bidang' ? 'block' : 'none' }}>
-                            {selectedBidang ? (
-                                <BidangDetail
-                                    bidang={selectedBidang}
-                                    onBack={() => setSelectedBidang(null)}
-                                    currentUserName={userName}
-                                    onAddKnowledge={handleAddKnowledge}
-                                    categoryData={getCategoryData(selectedBidang.name)}
-                                    onUpdateCategoryData={handleUpdateCategoryData}
-                                    addNotification={addNotification}
-                                />
-                            ) : (
-                                <Bidang
-                                    onBidangClick={(bidang) => setSelectedBidang(bidang)}
-                                    getCategoryCount={getCategoryCount}
-                                />
-                            )}
+                            {
+                                selectedBidang ? (
+                                    <BidangDetail
+                                        bidang={selectedBidang}
+                                        onBack={() => setSelectedBidang(null)}
+                                        currentUserName={userName}
+                                        onAddKnowledge={handleAddKnowledge}
+                                        categoryData={getCategoryData(selectedBidang.name)}
+                                        onUpdateCategoryData={handleUpdateCategoryData}
+                                        addNotification={addNotification}
+                                        registeredMembers={allUsers}
+                                    />
+                                ) : (
+                                    <Bidang
+                                        onBidangClick={(bidang) => setSelectedBidang(bidang)}
+                                        getCategoryCount={getCategoryCount}
+                                    />
+                                )}
                         </div>
 
                         {/* Persistent Tabs (Instant Access) */}
-                        <div style={{ display: tab === 'pesan' ? 'block' : 'none' }}><Pesan userName={userName} onNavigate={(target) => setTab(target)} /></div>
-                        <div style={{ display: tab === 'anggota' ? 'block' : 'none' }}><Anggota isPrivateMode={isPrivate} registeredUsers={allUsers} onNavigate={(target) => setTab(target)} userName={userName} /></div>
+                        <div style={{ display: tab === 'pesan' ? 'block' : 'none' }}> <Pesan userName={userName} onNavigate={(target) => setTab(target)} /></div>
+                        <div style={{ display: tab === 'anggota' ? 'block' : 'none' }}>
+                            <Anggota
+                                isPrivateMode={isPrivate}
+                                registeredUsers={allUsers}
+                                onNavigate={(target) => setTab(target)}
+                                userName={userName}
+                                friends={userFriends}
+                                onUpdateFriends={setUserFriends}
+                            />
+                        </div>
                         <div style={{ display: tab === 'notif' ? 'block' : 'none' }}>
                             <Notifikasi
                                 onNavigate={(target) => setTab(target)}
@@ -5597,7 +5525,7 @@
                     </div>
 
                     {/* Mobile Bottom Nav */}
-                    <div className="bottom-nav">
+                    <div className="bottom-nav" >
                         <div className={`nav-item ${tab === 'home' ? 'active' : ''}`} data-menu="home" onClick={() => { setTab('home'); setSelectedBidang(null); }}>
                             <Icon name="home" />
                             <span>Beranda</span>
@@ -5623,8 +5551,8 @@
                             <Icon name="user" />
                             <span>Profil</span>
                         </div>
-                    </div>
-                </div>
+                    </div >
+                </div >
             );
         }
 
